@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Forca Futurista</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            margin: 0;
+            flex-direction: column;
+            color: #fff;
+            -webkit-user-select: none;  /* Safari */
+            -moz-user-select: none;     /* Firefox */
+            -ms-user-select: none;      /* IE10+/Edge */
+            user-select: none;          /* Standard */
+        }
+
+        .game-container {
+            text-align: center;
+        }
+
+        .word-display {
+            font-size: 2rem;
+            letter-spacing: 0.5rem;
+            margin-bottom: 20px;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .key {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: 1.5rem;
+            color: #00ffff;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.3s ease;
+        }
+
+        .key:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .key:disabled {
+            color: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+        }
+
+        .message {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+
+        .win-message {
+            color: #32cd32;
+            animation: winAnimation 2s ease-out forwards;
+        }
+
+        .lose-message {
+            color: #ff4500;
+            animation: loseAnimation 2s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes winAnimation {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes loseAnimation {
+            0% {
+                transform: rotateX(90deg);
+                opacity: 0;
+            }
+            50% { opacity: 1; }
+            100% {
+                transform: rotateX(0);
+                opacity: 1;
+            }
+        }
+
+        .restart-button {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            color: #fff;
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 126, 95, 0.6);
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .restart-button:hover {
+            background: linear-gradient(135deg, #feb47b, #ff7e5f);
+            transform: translateY(-2px);
+        }
+
+        .restart-button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="word-display" class="word-display"></div>
+        <div id="keyboard" class="keyboard"></div>
+        <div id="message" class="message"></div>
+        <button id="restart-button" class="restart-button">Reiniciar Jogo</button>
+    </div>
+
+    <script>
+        // Prevent context menu and certain keyboard shortcuts
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('keydown', function(event) {
+            if (event.keyCode == 123 || (event.ctrlKey && event.shiftKey && event.keyCode == 73)) {
+                event.preventDefault();
+            }
+        });
+
+        const words = [
+            'FUTURO', 'TECNOLOGIA', 'INOVACAO', 'ALGORITMO', 'PROGRAMACAO',
+            'INTELIGENCIA', 'ARTIFICIAL', 'ROBOTICA', 'AUTOMACAO', 'VIRTUAL',
+            'CIBERNETICA', 'DADOS', 'BLOQUEIO', 'NUVEM', 'INTELIGENTE',
+            'CONEXAO', 'MACHINE', 'APRENDIZADO', 'NEURAL', 'DESAFIO',
+            'STARTUP', 'DIGITAL', 'GAMIFICACAO', 'SUSTENTABILIDADE', 'INTERNET',
+            'SISTEMA', 'EXPERIENCIA', 'FUTURISMO', 'INOVA', 'REDES',
+            'INTUITIVO', 'BIOMETRIA', 'SENSOR', 'CLOUD', 'BIGDATA',
+            'AUTONOMIA', 'CIBERSEGURANCA', '5G', 'REALIDADE', 'AUMENTADA',
+            'VIRTUALIZACAO', 'DESIGN', 'INTERFACE', 'PALEONTOLOGIA', 'INTELIGENTE',
+            'SMART', 'TECNOLOGICO', 'METAVERSO', 'DROIDE', 'HUMANOIDE',
+            'GENETICA', 'BLOCKCHAIN', 'CONECTIVIDADE', 'HACKER', 'DESENVOLVIMENTO',
+            'TENDENCIA', 'SUSTENTAVEL', 'SIMULACAO', 'VR', 'AR'
+        ];
+
+        let selectedWord = '';
+        let guessedLetters = [];
+        let mistakes = 0;
+        const maxMistakes = 6;
+
+        const wordDisplay = document.getElementById('word-display');
+        const keyboard = document.getElementById('keyboard');
+        const message = document.getElementById('message');
+        const restartButton = document.getElementById('restart-button');
+
+        function startGame() {
+            selectedWord = words[Math.floor(Math.random() * words.length)];
+            guessedLetters = [];
+            mistakes = 0;
+            message.textContent = '';
+            message.classList.remove('win-message', 'lose-message');
+            updateWordDisplay();
+            createKeyboard();
+        }
+
+        function updateWordDisplay() {
+            wordDisplay.textContent = selectedWord
+                .split('')
+                .map(letter => (guessedLetters.includes(letter) ? letter : '_'))
+                .join(' ');
+        }
+
+        function createKeyboard() {
+            keyboard.innerHTML = '';
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
+            letters.forEach(letter => {
+                const button = document.createElement('button');
+                button.textContent = letter;
+                button.classList.add('key');
+                button.addEventListener('click', () => handleGuess(letter, button));
+                keyboard.appendChild(button);
+            });
+        }
+
+        function handleGuess(letter, button) {
+            if (guessedLetters.includes(letter)) return;
+            guessedLetters.push(letter);
+            button.disabled = true;
+
+            if (selectedWord.includes(letter)) {
+                updateWordDisplay();
+                checkWin();
+            } else {
+                mistakes++;
+                checkLose();
+            }
+        }
+
+        function checkWin() {
+            if (selectedWord.split('').every(letter => guessedLetters.includes(letter))) {
+                message.textContent = 'Parabéns! Você venceu!';
+                message.classList.add('win-message');
+                endGame();
+            }
+        }
+
+        function checkLose() {
+            if (mistakes >= maxMistakes) {
+                message.textContent = `Você perdeu! A palavra era ${selectedWord}.`;
+                message.classList.add('lose-message');
+                endGame();
+            }
+        }
+
+        function endGame() {
+            document.querySelectorAll('.key').forEach(button => button.disabled = true);
+        }
+
+        restartButton.addEventListener('click', startGame);
+
+        startGame();
+    </script>
+</body>
+  </html>
